@@ -15,16 +15,38 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server ready on http://localhost:${PORT}`));
 
+
+// Helper untuk membersihkan karakter \n pada response
+function cleanNewlines(response) {
+  let cleanResult = response;
+  if (response && response.candidates && response.candidates[0]?.content?.parts[0]?.text) {
+    cleanResult = {
+      ...response,
+      candidates: response.candidates.map(candidate => ({
+        ...candidate,
+        content: {
+          ...candidate.content,
+          parts: candidate.content.parts.map(part => ({
+            ...part,
+            text: part.text.replace(/\n/g, ' ')
+          }))
+        }
+      }))
+    };
+  }
+  return cleanResult;
+}
+
 //1. Generate text
 app.post('/generate-text', async (req, res) => {
-try {
+  try {
     const { prompt } = req.body;
     const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await genAI.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: prompt
+      model: GEMINI_MODEL,
+      contents: prompt
     });
-    res.json({ result: response });
+    res.json({ result: cleanNewlines(response) });
   } catch (err) {
     res.status(500).json({ err: err.message });
   }
@@ -53,7 +75,7 @@ app.post('/generate-from-image', upload.single('image'), async (req, res) => {
         model: "gemini-1.5-flash",
         contents: [prompt, imagePart]
     });
-    res.json({ result: response });
+    res.json({ result: cleanNewlines(response) });
   } catch (err) {
     res.status(500).json({ err: err.message });
   }
@@ -82,7 +104,7 @@ app.post('/generate-from-document', upload.single('document'), async (req, res) 
         model: GEMINI_MODEL,
         contents: [prompt, documentPart]
     });
-    res.json({ result: response });
+    res.json({ result: cleanNewlines(response) });
   } catch (err) {
     res.status(500).json({ err: err.message });
   }
@@ -111,7 +133,7 @@ app.post('/generate-from-audio', upload.single('audio'), async (req, res) => {
         model: GEMINI_MODEL,
         contents: [prompt, audioPart]
     });
-    res.json({ result: response });
+    res.json({ result: cleanNewlines(response) });
   } catch (err) {
     res.status(500).json({ err: err.message });
   }
